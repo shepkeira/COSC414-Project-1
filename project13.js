@@ -114,6 +114,18 @@ class Circle{
         [  0/255, 255/255,   0/255, 1.0],
         [  0/255, 255/255, 127/255, 1.0],
         [  0/255, 128/255,   0/255, 1.0],
+        [ 72/255,  61/255, 139/255, 1.0],
+        [123/255, 104/255, 238/255, 1.0],
+        [138/255,  43/255, 226/255, 1.0],
+        [75/255,    0/255, 130/255, 1.0],
+        [135/255, 206/255, 250/255, 1.0],
+        [176/255, 224/255, 230/255, 1.0],
+        [ 95/255, 158/255, 160/255, 1.0],
+        [100/255, 149/255, 237/255, 1.0],
+        [188/255, 143/255, 143/255, 1.0],
+        [205/255, 133/255,  63/255, 1.0],
+        [165/255,  42/255,  42/255, 1.0],
+        [128/255,   0/255,   0/255, 1.0]
     ];
 
 function shaders(gl, program) {
@@ -322,20 +334,14 @@ var InitDemo = function() {
         }
     };
 
-    function point_in_circle(a, b, x, y, rx, ry, sx, sy) {
+    function point_in_circle(a, b, x, y, rx, ry, sx, sy, one_point) {
         var radius_x = rx*sx;
         var radius_y = ry*sy;
 
-        var x_dist = Math.abs(x-a);
-        var y_dist = Math.abs(y-b);
+        var p = ((Math.pow((a-x), 2) / Math.pow(radius_x,2))
+                    + (Math.pow((b-y), 2) / Math.pow(radius_y,2)));
 
-        var dist_mag = Math.sqrt(Math.pow(x_dist, 2), Math.pow(y_dist, 2));
-        var radius_mag = Math.sqrt(Math.pow(radius_x, 2), Math.pow(radius_y, 2));
-        console.log("dist-mag = " + dist_mag);
-        console.log("radis_mag = " + radius_mag);
-
-        if(dist_mag <= radius_mag) {
-            console.log("delte");
+        if(p <= 1) {
             return true;
         }
         return false;
@@ -347,17 +353,19 @@ var InitDemo = function() {
         my = my/canvas.height -0.5;
         mx = mx*2;
         my = my*-2;
-        for(var i = 0; i < circles.length; i++) {
+        for(var i = circles.length - 1; i >= 0; i--) {
+            if(circles[i]['deleted']) {
+                continue;
+            }
             var radius = circles[i]['radius'];
             var center = circles[i]['center'];
             var scale = circles[i]['scale'];
-            console.log("radius: " + radius);
-            console.log("scale: " + scale);
-            console.log("center: " + center);
+
             var in_circle = point_in_circle(mx, my, center[0], center[1], radius[0], radius[1], scale[0], scale[1]);
     
             if (in_circle) {
                 circles[i]['deleted'] = true;
+                break;
             }
         }
     }
