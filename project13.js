@@ -1,3 +1,6 @@
+//////////////////////////////////
+//          Shader Code         //
+//////////////////////////////////
 var vertexShaderText = [
     'attribute vec2 vPosition;',
     'uniform vec2 uScalingFactor;',
@@ -17,7 +20,7 @@ var vertexShaderText = [
     '   gl_Position.w = 1.0;',
     '   fragColor = vertColor;',
     '}'
-    ].join('\n');
+].join('\n');
     
 var fragmentShaderText = [
     'precision mediump float;',
@@ -29,11 +32,42 @@ var fragmentShaderText = [
         
     '	gl_FragColor = fragColor;',
     '}',
-    ].join('\n')
+].join('\n')
+
+//////////////////////////////////
+//       Global Variables       //
+//////////////////////////////////
 
 var GameOver = false;
 var Won = null;
 
+var scaleGrowthPerSecond = 0.0125;
+
+var noOfFans = 80; // number of fans in the triangle fan to make circles
+var anglePerFan = (2*Math.PI) / noOfFans; // angle of each triangle to make the fans
+var bacteria_colours = [
+    [      0, 168/255, 107/255, 1.0],
+    [128/255, 128/255,   0/255, 1.0],
+    [  0/255, 255/255,   0/255, 1.0],
+    [  0/255, 255/255, 127/255, 1.0],
+    [  0/255, 128/255,   0/255, 1.0],
+    [ 72/255,  61/255, 139/255, 1.0],
+    [123/255, 104/255, 238/255, 1.0],
+    [138/255,  43/255, 226/255, 1.0],
+    [75/255,    0/255, 130/255, 1.0],
+    [135/255, 206/255, 250/255, 1.0],
+    [176/255, 224/255, 230/255, 1.0],
+    [ 95/255, 158/255, 160/255, 1.0],
+    [100/255, 149/255, 237/255, 1.0],
+    [188/255, 143/255, 143/255, 1.0],
+    [205/255, 133/255,  63/255, 1.0],
+    [165/255,  42/255,  42/255, 1.0],
+    [128/255,   0/255,   0/255, 1.0]
+];
+
+//////////////////////////////////
+//        Circle Class          //
+//////////////////////////////////
 class Circle{
     constructor(currentScale, centerOfCircle_real, colour, canvas, gl) {
         this.scale = currentScale;
@@ -105,30 +139,13 @@ class Circle{
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
     }
 }
+//////////////////////////////////
+//       Shader Function        //
+//////////////////////////////////
 
-    var noOfFans = 80; // number of fans in the triangle fan to make circles
-    var anglePerFan = (2*Math.PI) / noOfFans; // angle of each triangle to make the fans
-    var bacteria_colours = [
-        [      0, 168/255, 107/255, 1.0],
-        [128/255, 128/255,   0/255, 1.0],
-        [  0/255, 255/255,   0/255, 1.0],
-        [  0/255, 255/255, 127/255, 1.0],
-        [  0/255, 128/255,   0/255, 1.0],
-        [ 72/255,  61/255, 139/255, 1.0],
-        [123/255, 104/255, 238/255, 1.0],
-        [138/255,  43/255, 226/255, 1.0],
-        [75/255,    0/255, 130/255, 1.0],
-        [135/255, 206/255, 250/255, 1.0],
-        [176/255, 224/255, 230/255, 1.0],
-        [ 95/255, 158/255, 160/255, 1.0],
-        [100/255, 149/255, 237/255, 1.0],
-        [188/255, 143/255, 143/255, 1.0],
-        [205/255, 133/255,  63/255, 1.0],
-        [165/255,  42/255,  42/255, 1.0],
-        [128/255,   0/255,   0/255, 1.0]
-    ];
+function shaders(gl) {
+    var program = gl.createProgram();
 
-function shaders(gl, program) {
     var vertexShader = gl.createShader(gl.VERTEX_SHADER);
     var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
 
@@ -149,13 +166,17 @@ function shaders(gl, program) {
     gl.attachShader(program,vertexShader);
     gl.attachShader(program,fragmentShader);
 
-    return [vertexShader, fragmentShader];
+    return program;
 };
+
+//////////////////////////////////
+//      Bacteria Generator      //
+//////////////////////////////////
 
 function bacteria_generator(currentScale, canvas, gl, disk_radius) {
     number_of_possible_colours = bacteria_colours.length
     random_colour = Math.floor((Math.random()*number_of_possible_colours) + 0); //0 to length
-    var colour = bacteria_colours[random_colour];//[1, 1, 1, 1]; //bacteria_colours
+    var colour = bacteria_colours[random_colour]; //bacteria_colours
     random_angle = Math.floor((Math.random() * 360) + 0);
     y_center = disk_radius[0]*Math.cos(random_angle);
     x_center = disk_radius[1]*Math.sin(random_angle);
@@ -165,7 +186,10 @@ function bacteria_generator(currentScale, canvas, gl, disk_radius) {
     circle_obj.cirbleBindBuffers(gl);
     return circle;
 }
-    
+//////////////////////////////////
+//         Main Function       //
+//////////////////////////////////
+
 var InitDemo = function() {
 
 
@@ -190,13 +214,11 @@ var InitDemo = function() {
     canvas.height = window.innerHeight;
     gl.viewport(0,0,canvas.width,canvas.height);
 
-    
-
     //////////////////////////////////
     // create/compile/link shaders  //
     //////////////////////////////////
-    var program = gl.createProgram();
-    var gl_shaders = shaders(gl, program);
+
+    var program = shaders(gl);
 
     gl.linkProgram(program);
     if(!gl.getProgramParameter(program,gl.LINK_STATUS)){
@@ -205,14 +227,10 @@ var InitDemo = function() {
     }
 
     //////////////////////////////////
-    //    create circle buffer    //
+    //    create circle buffer      //
     //////////////////////////////////
-    var xScale = 0.1, yScale = 0.1;
-    var currentScale = [xScale, yScale];
+    var currentScale = [0.1, 0.1];
     var circles = [];
-    var desired_y_radius = canvas.height*(3/4);
-    var desired_x_radius = canvas.width*(3/4);
-    var wanted_radius = Math.min(desired_y_radius, desired_x_radius);
     
     disk_obj = new Circle([1,1], [0,0], [1,1,1,1], canvas, gl);
     disk = disk_obj.disk();
@@ -226,13 +244,14 @@ var InitDemo = function() {
     //            Drawing           //
     //////////////////////////////////
     var previousTime = 0;
-    var scaleGrowthPerSecond = 0.0125;
 
     animateScene();
     function animateScene() { 
+        // Clear Screen
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
+        // Enable Vertex Attribute
         var positionAttribLocation = gl.getAttribLocation(program,'vPosition');
         gl.vertexAttribPointer(
             positionAttribLocation, //attribute location
@@ -246,7 +265,7 @@ var InitDemo = function() {
 
         gl.useProgram(program);
 
-        //// DRAW DISK
+        // DRAW DISK
         uScalingFactor = gl.getUniformLocation(program, "uScalingFactor");
         gl.uniform2f(uScalingFactor, disk['scale'][0], disk['scale'][1]);
 
@@ -259,13 +278,15 @@ var InitDemo = function() {
         var verticesData = disk['vertices'];
         points = verticesData.length/2;
         gl.drawArrays(gl.TRIANGLE_FAN,0,points);
-        ////
 
+        //check if 2 bacteria collide
+        //if collide first second disappears
+
+        // DRAW BACTERIA
         for(var i = 0; i < circles.length; i++) {
             
             var currentCircle = circles[i];
             if (!currentCircle['deleted']) {
-                //console.log(currentCircle);
                 uScalingFactor = gl.getUniformLocation(program, "uScalingFactor");
                 gl.uniform2f(uScalingFactor, currentCircle['scale'][0], currentCircle['scale'][1]);
             
@@ -281,8 +302,8 @@ var InitDemo = function() {
             }
         }
 
-        //Check if game over
-        //player wins
+        //CHECK IF GAME OVER
+        //CHECK IF PLAYER HAS WON
         all_bateria_gone = true;
         for(var i = 0; i < circles.length; i++) {
             var currentCircle = circles[i];
@@ -295,11 +316,10 @@ var InitDemo = function() {
             Won = true;
         }
 
-        //check is game wins
+        //CHECK IF GAME HAS WON
         num_bacteria_meeting_size_limit = 0;
         for(var i = 0; i < circles.length; i++) {
             var currentCircle = circles[i];
-            //console.log(currentCircle['scale']);
             if (currentCircle['scale'][0] > .3 | currentCircle['scale'][1] > .3 ) {
                 num_bacteria_meeting_size_limit += 1;
             }
@@ -310,31 +330,29 @@ var InitDemo = function() {
         }
 
 
-
         if(!GameOver) {
             window.requestAnimationFrame(function(currentTime) {
+                // Update Scale of Bacteria if game not over
                 var deltaScale = ((currentTime - previousTime) / 1000) * scaleGrowthPerSecond;
                 currentScale[0] += deltaScale;
                 currentScale[1] += deltaScale;
-                // for(var i = 0; i < circles.length; i++) {
-                //     var currentCircle = circles[i];
-                //     currentCircle['scale'][0] += deltaScale;
-                //     currentCircle['scale'][1] += deltaScale;
-                // }
                 previousTime = currentTime;
+                // If game not over keep updating animation
                 animateScene();
             })
         } else {
+            // If game over display who won and stop updating animation
             if (Won) {
                 gameOverText.innerHTML = "You Win!";
             } else {
                 gameOverText.innerHTML = "You Lost!";
             }
-            console.log("Game Over");
+            console.log("Game Over"); //note in console log that game has ended
         }
     };
 
-    function point_in_circle(a, b, x, y, rx, ry, sx, sy, one_point) {
+    // Check if point (a,b) is in circle at (x,y) with radius (rx, ry) and at scale (sx,sy)
+    function point_in_circle(a, b, x, y, rx, ry, sx, sy) {
         var radius_x = rx*sx;
         var radius_y = ry*sy;
 
@@ -347,14 +365,19 @@ var InitDemo = function() {
         return false;
     }
 
+    // When mouse clicked check if you are clicking on circle
     canvas.onmousedown = function(ev) {
         var mx = ev.clientX, my = ev.clientY;
         mx = mx/canvas.width -0.5;
         my = my/canvas.height -0.5;
         mx = mx*2;
         my = my*-2;
+
+        // Check bacteria from top to bottom (reverse order from how they are displayed on screen)
+        // So that the bateria on top will deleted not the one on the bottom
         for(var i = circles.length - 1; i >= 0; i--) {
             if(circles[i]['deleted']) {
+                // check only bacteria that are still in play
                 continue;
             }
             var radius = circles[i]['radius'];
@@ -362,7 +385,7 @@ var InitDemo = function() {
             var scale = circles[i]['scale'];
 
             var in_circle = point_in_circle(mx, my, center[0], center[1], radius[0], radius[1], scale[0], scale[1]);
-    
+            // Delete only the first bacteria clicked on
             if (in_circle) {
                 circles[i]['deleted'] = true;
                 break;
